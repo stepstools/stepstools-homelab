@@ -31,11 +31,14 @@ get_gateway_and_netmask() {
     echo "Gateway: $GATEWAY, Netmask: $NETMASK"
 }
 
-# Function to get the current IP address assigned by DHCP
-get_current_ip() {
-    CURRENT_IP=$(ip addr show $PRIMARY_INTERFACE | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1)
-    echo $CURRENT_IP
-}
+# Ask the user for a new IP address (since DHCP IP is not used anymore)
+echo -n "Enter the desired static IP address: "
+read STATIC_IP
+
+if [[ -z "$STATIC_IP" ]]; then
+    echo "No IP address provided. Exiting."
+    exit 1
+fi
 
 # Auto-detect primary network interface
 INTERFACE=$(get_primary_interface)
@@ -43,23 +46,17 @@ INTERFACE=$(get_primary_interface)
 # Auto-detect gateway and netmask
 get_gateway_and_netmask
 
-# Get the current DHCP-assigned IP address
-CURRENT_IP=$(get_current_ip)
-
-# Ask the user for a new IP address (defaulting to the current DHCP IP)
-echo -n "Current IP address (DHCP-assigned): $CURRENT_IP"
-read -p " Enter a new static IP (press Enter to keep the current IP): " NEW_IP
-
-# If the user didn't enter a new IP, use the current IP
-if [[ -z "$NEW_IP" ]]; then
-    STATIC_IP=$CURRENT_IP
-else
-    STATIC_IP=$NEW_IP
-fi
+# Pause after detecting the network settings
+echo "Network settings detected. Press Enter to continue..."
+read
 
 # Backup the original interfaces file
 echo "Backing up /etc/network/interfaces..."
 cp /etc/network/interfaces /etc/network/interfaces.bak
+
+# Pause after backup
+echo "Backup completed. Press Enter to continue..."
+read
 
 # Update /etc/network/interfaces to configure a static IP (without DNS)
 echo "Configuring static IP on interface $INTERFACE..."
@@ -80,26 +77,50 @@ iface $INTERFACE inet static
     gateway $GATEWAY
 EOL
 
+# Pause after modifying interfaces file
+echo "Network interface configuration updated. Press Enter to continue..."
+read
+
 # Restart networking service to apply changes
 echo "Restarting networking service..."
 systemctl restart networking
+
+# Pause after restarting networking
+echo "Networking service restarted. Press Enter to continue..."
+read
 
 # Verify the new IP configuration
 echo "Verifying the IP configuration..."
 ip addr show $INTERFACE
 
+# Pause after verifying IP configuration
+echo "IP configuration verified. Press Enter to continue..."
+read
+
 # Run apt update and upgrade
 echo "Running apt update and upgrade..."
 apt update && apt upgrade -y
+
+# Pause after apt update and upgrade
+echo "System update completed. Press Enter to continue..."
+read
 
 # Install unattended-upgrades and reconfigure it
 echo "Installing unattended-upgrades..."
 apt install -y unattended-upgrades
 dpkg-reconfigure unattended-upgrades
 
+# Pause after installing unattended-upgrades
+echo "Unattended-upgrades installed and configured. Press Enter to continue..."
+read
+
 # Install fail2ban
 echo "Installing fail2ban..."
 apt install -y fail2ban
+
+# Pause after installing fail2ban
+echo "Fail2ban installed. Press Enter to continue..."
+read
 
 echo "System updated and security tools installed successfully."
 
@@ -108,22 +129,38 @@ echo "System updated and security tools installed successfully."
 
 # Step 1: Modify GRUB configuration to enable serial console
 echo "Modifying GRUB configuration for serial console..."
-sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0"/' /etc/default/grub
-sudo sed -i 's/^#GRUB_TERMINAL="console"/GRUB_TERMINAL="console serial"/' /etc/default/grub
-sudo sed -i 's/^#GRUB_SERIAL_COMMAND="serial --speed=115200"/GRUB_SERIAL_COMMAND="serial --speed=115200"/' /etc/default/grub
+sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0"/' /etc/default/grub
+sed -i 's/^#GRUB_TERMINAL="console"/GRUB_TERMINAL="console serial"/' /etc/default/grub
+sed -i 's/^#GRUB_SERIAL_COMMAND="serial --speed=115200"/GRUB_SERIAL_COMMAND="serial --speed=115200"/' /etc/default/grub
+
+# Pause after modifying GRUB
+echo "GRUB configuration updated. Press Enter to continue..."
+read
 
 # Step 2: Update GRUB to apply changes
 echo "Updating GRUB..."
-sudo update-grub
+update-grub
+
+# Pause after updating GRUB
+echo "GRUB updated. Press Enter to continue..."
+read
 
 # Step 3: Enable serial-getty service on ttyS0 (Serial Console)
 echo "Enabling serial-getty service on ttyS0..."
-sudo systemctl enable serial-getty@ttyS0.service
-sudo systemctl start serial-getty@ttyS0.service
+systemctl enable serial-getty@ttyS0.service
+systemctl start serial-getty@ttyS0.service
+
+# Pause after enabling serial-getty service
+echo "serial-getty service enabled. Press Enter to continue..."
+read
 
 # Step 4: Check the status of serial-getty service
 echo "Checking status of serial-getty service..."
-sudo systemctl status serial-getty@ttyS0.service
+systemctl status serial-getty@ttyS0.service
+
+# Pause after checking serial-getty service
+echo "Serial-getty service status displayed. Press Enter to continue..."
+read
 
 # ====================================
 # Reboot Query
@@ -133,7 +170,7 @@ read REBOOT
 
 if [[ "$REBOOT" =~ ^[Yy]$ ]]; then
     echo "Rebooting the system..."
-    sudo reboot
+    reboot
 else
     echo "Reboot skipped. You may want to reboot the system later for all changes to take effect."
 fi
