@@ -105,9 +105,30 @@ echo "System updated and security tools installed successfully."
 
 # Step 1: Modify GRUB configuration to enable serial console
 echo "Modifying GRUB configuration for serial console..."
-sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0"/' /etc/default/grub
-sed -i 's/^#GRUB_TERMINAL="console"/GRUB_TERMINAL="console serial"/' /etc/default/grub
-sed -i 's/^#GRUB_SERIAL_COMMAND="serial --speed=115200"/GRUB_SERIAL_COMMAND="serial --speed=115200"/' /etc/default/grub
+
+# Check if GRUB_CMDLINE_LINUX_DEFAULT line exists and add if not
+if ! grep -q 'GRUB_CMDLINE_LINUX_DEFAULT' /etc/default/grub; then
+    echo "GRUB_CMDLINE_LINUX_DEFAULT not found, adding it."
+    sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/a GRUB_CMDLINE_LINUX_DEFAULT=\"\$(grep 'GRUB_CMDLINE_LINUX_DEFAULT' /etc/default/grub | sed 's/\"/\\\\\"/g') console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0\"" /etc/default/grub
+else
+    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0"/' /etc/default/grub
+fi
+
+# Check if GRUB_TERMINAL line exists and add if not
+if ! grep -q 'GRUB_TERMINAL' /etc/default/grub; then
+    echo "GRUB_TERMINAL not found, adding it."
+    echo 'GRUB_TERMINAL="console serial"' >> /etc/default/grub
+else
+    sed -i 's/^#GRUB_TERMINAL="console"/GRUB_TERMINAL="console serial"/' /etc/default/grub
+fi
+
+# Check if GRUB_SERIAL_COMMAND line exists and add if not
+if ! grep -q 'GRUB_SERIAL_COMMAND' /etc/default/grub; then
+    echo "GRUB_SERIAL_COMMAND not found, adding it."
+    echo 'GRUB_SERIAL_COMMAND="serial --speed=115200"' >> /etc/default/grub
+else
+    sed -i 's/^#GRUB_SERIAL_COMMAND="serial --speed=115200"/GRUB_SERIAL_COMMAND="serial --speed=115200"/' /etc/default/grub
+fi
 
 # Step 2: Update GRUB to apply changes
 echo "Updating GRUB..."
